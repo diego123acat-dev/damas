@@ -1,32 +1,40 @@
 package com.example.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import com.example.strategy.EstrategiaJuego;
+public class Ruta {
 
-public class Ruta implements EstrategiaJuego {
     private List<Posicion> movimientos;
     private int capturas;
+
+    public Ruta() {
+        this.movimientos = new ArrayList<>();
+        this.capturas = 0;
+    }
 
     public Ruta(List<Posicion> movimientos, int capturas) {
         this.movimientos = movimientos;
         this.capturas = capturas;
     }
 
-    @Override
-    public boolean esMovimientoValido(int xOrigen, int yOrigen, int xDestino, int yDestino) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public List<Posicion> getMovimientos() {
+        return new ArrayList<>(movimientos);
     }
 
-    @Override
-    public Ruta calcularMejorRuta() {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public int getCapturas() {
+        return capturas;
     }
 
-    @Override
-    public void inicializarTablero(Tablero tablero) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void agregarMovimiento(Posicion p) {
+        movimientos.add(p);
     }
 
+    public void incrementarCapturas() {
+        capturas++;
+    }
 
+    public boolean esRutaDeCaptura() {
+        return capturas > 0;
+    }
 }

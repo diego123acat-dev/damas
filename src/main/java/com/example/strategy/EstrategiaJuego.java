@@ -1,10 +1,23 @@
 package com.example.strategy;
 
+import com.example.model.Pieza;
+import com.example.model.Posicion;
 import com.example.model.Ruta;
 import com.example.model.Tablero;
 
 public interface EstrategiaJuego {
-    boolean esMovimientoValido(int xOrigen, int yOrigen, int xDestino, int yDestino);
-    Ruta calcularMejorRuta();
+
+    boolean esMovimientoValido(
+            Pieza pieza,
+            Posicion origen,
+            Posicion destino,
+            Tablero tablero
+    );
+
+    Ruta calcularMejorRuta(
+            Pieza pieza,
+            Tablero tablero
+    );
+
     void inicializarTablero(Tablero tablero);
 }

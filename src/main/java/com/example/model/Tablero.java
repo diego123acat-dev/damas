@@ -1,52 +1,54 @@
 package com.example.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import com.example.observer.Observador;
+public class Tablero {
 
-public class Tablero implements com.example.observer.Sujeto, com.example.observer.Observador {
     private List<Casilla> casillas;
-    private List<Observador> observadores;
 
-    public Tablero(List<Casilla> casillas, List<Observador> observadores) {
-        this.casillas = casillas;
-        this.observadores = observadores;
+    public Tablero() {
+        this.casillas = new ArrayList<>();
+        inicializarCasillas();
     }
 
-    public void moverDama(Posicion origen, Posicion destino) {
-        // Lógica para mover una dama de origen a destino
-        // Validar movimiento, actualizar estado del tablero, notificar observadores, etc.
-    }
-
-    public void eliminarDama(Posicion posicion) {
-        // Lógica para eliminar una dama en la posición dada
-        // Actualizar estado del tablero, notificar observadores, etc.
+    private void inicializarCasillas() {
+        for (int fila = 0; fila < 8; fila++) {
+            for (int col = 0; col < 8; col++) {
+                casillas.add(new Casilla(new Posicion(fila, col)));
+            }
+        }
     }
 
     public Casilla getCasilla(Posicion posicion) {
-        // Lógica para obtener la casilla en la posición dada
-        return null; // Placeholder
+        return casillas.stream()
+                .filter(c -> c.getPosicion().getFila() == posicion.getFila()
+                        && c.getPosicion().getColumna() == posicion.getColumna())
+                .findFirst()
+                .orElse(null);
     }
 
-    @Override
-    public void agregarObservador(Observador observador) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void moverPieza(Posicion origen, Posicion destino) {
+
+        Casilla casillaOrigen = getCasilla(origen);
+        Casilla casillaDestino = getCasilla(destino);
+
+        if (casillaOrigen == null || casillaDestino == null) return;
+
+        Pieza pieza = casillaOrigen.getPieza();
+
+        casillaDestino.setPieza(pieza);
+        casillaOrigen.vaciar();
     }
 
-    @Override
-    public void eliminarObservador(Observador observador) {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void eliminarPieza(Posicion posicion) {
+        Casilla casilla = getCasilla(posicion);
+        if (casilla != null) {
+            casilla.vaciar();
+        }
     }
 
-    @Override
-    public void notificarObservadores() {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public List<Casilla> getCasillas() {
+        return casillas;
     }
-
-    @Override
-    public void actualizar() {
-        throw new UnsupportedOperationException("Not supported yet.");
-    }
-
-
 }

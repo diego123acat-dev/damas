@@ -1,19 +1,21 @@
 package com.example.model;
 
 public class Posicion {
-    private int x;
-    private int y;
 
-    public Posicion(int x, int y) {
-        this.x = x;
-        this.y = y;
+    private final int fila;
+    private final int columna;
+
+    public Posicion(int fila, int columna) {
+        this.fila = fila;
+        this.columna = columna;
     }
 
     public int getFila() {
-        return x;
+        return fila;
     }
 
     public int getColumna() {
-        return y;
+        return columna;
     }
+
 }
