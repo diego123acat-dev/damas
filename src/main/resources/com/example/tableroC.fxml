@@ -13,7 +13,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<AnchorPane prefHeight="720.0" prefWidth="1000.0" style="-fx-background-color: #ECE3DB;" xmlns="http://javafx.com/javafx/24" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane prefHeight="720.0" prefWidth="1000.0" style="-fx-background-color: #ECE3DB;" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="controllers.tableroCController">
 
     <children>
 
@@ -29,7 +29,7 @@
 
                     <ImageView fitHeight="40.0" fitWidth="40.0" preserveRatio="true">
                         <image>
-                            <Image url="@7mo/Diseño/damas/src/main/java/com/example/interfaz/ficha_oscura.png" />
+                            <Image url="@../Images/ficha%20oscura.jpg" />
                         </image>
                     </ImageView>
 
@@ -39,7 +39,7 @@
                         </font>
                     </Label>
 
-                    <Label text="0">
+                    <Label fx:id="J1Score" text="0">
                         <font>
                             <Font size="30.0" />
                         </font>
@@ -61,7 +61,7 @@
 
                     <ImageView fitHeight="40.0" fitWidth="40.0" preserveRatio="true">
                         <image>
-                            <Image url="@7mo/Diseño/damas/src/main/java/com/example/interfaz/ficha_clara.png" />
+                            <Image url="@../Images/ficha%20clara.jpg" />
                         </image>
                     </ImageView>
 
@@ -71,7 +71,7 @@
                         </font>
                     </Label>
 
-                    <Label text="0">
+                    <Label fx:id="J2Score" text="0">
                         <font>
                             <Font size="30.0" />
                         </font>
@@ -83,7 +83,7 @@
 
             <!-- TABLERO -->
 
-            <GridPane alignment="CENTER" gridLinesVisible="true" style="-fx-border-color: #A16A38; -fx-border-width: 4;">
+            <GridPane fx:id="tableroGrid" alignment="CENTER" gridLinesVisible="true" style="-fx-border-color: #A16A38; -fx-border-width: 4;">
 
                 <Pane prefHeight="70" prefWidth="70" style="-fx-background-color: #F4E7D3;" GridPane.columnIndex="0" GridPane.rowIndex="0" />
                 <Pane prefHeight="70" prefWidth="70" style="-fx-background-color: #B97A3D;" GridPane.columnIndex="1" GridPane.rowIndex="0" />
@@ -177,9 +177,7 @@
 
             <VBox alignment="CENTER" spacing="15.0">
 
-                <Button mnemonicParsing="false" prefHeight="60.0" prefWidth="260.0" style="-fx-background-color: #F6F0EA; -fx-background-radius: 15; -fx-border-radius: 15; -fx-border-color: #CBB8A7; -fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #6B4423;" text="Nuevo Juego" />
-
-                <Button mnemonicParsing="false" prefHeight="60.0" prefWidth="260.0" style="-fx-background-color: #F6F0EA; -fx-background-radius: 15; -fx-border-radius: 15; -fx-border-color: #CBB8A7; -fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #6B4423;" text="Reiniciar" />
+                <Button fx:id="reiniciarButton" mnemonicParsing="false" onAction="#reiniciarJuego" prefHeight="60.0" prefWidth="260.0" style="-fx-background-color: #F6F0EA; -fx-background-radius: 15; -fx-border-radius: 15; -fx-border-color: #CBB8A7; -fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #6B4423;" text="Reiniciar" />
 
             </VBox>
 

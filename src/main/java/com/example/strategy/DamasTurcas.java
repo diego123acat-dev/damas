@@ -27,19 +27,24 @@ public class DamasTurcas implements EstrategiaJuego {
         int dx = destino.getFila() - origen.getFila();
         int dy = destino.getColumna() - origen.getColumna();
 
-        // SOLO movimientos ortogonales
         if (dx != 0 && dy != 0) return false;
 
-        int pasos = Math.abs(dx + dy);
+        int pasos = Math.abs(dx) + Math.abs(dy);
 
-        // movimiento simple
         if (pasos == 1) {
             return true;
         }
 
-        // captura básica (sin validación intermedia aún)
         if (pasos == 2) {
-            return true;
+            Posicion intermedia = new Posicion(
+                    origen.getFila() + Integer.signum(dx),
+                    origen.getColumna() + Integer.signum(dy)
+            );
+
+            Casilla casillaIntermedia = tablero.getCasilla(intermedia);
+            return casillaIntermedia != null
+                    && casillaIntermedia.isOcupada()
+                    && casillaIntermedia.getPieza().getColor() != pieza.getColor();
         }
 
         return false;
@@ -47,9 +52,7 @@ public class DamasTurcas implements EstrategiaJuego {
 
     @Override
     public Ruta calcularMejorRuta(Pieza pieza, Tablero tablero) {
-
         List<Posicion> movimientos = new ArrayList<>();
-
         Posicion origen = buscarPosicion(pieza, tablero);
 
         if (origen == null) return new Ruta(movimientos, 0);
@@ -59,48 +62,53 @@ public class DamasTurcas implements EstrategiaJuego {
                 {0, 1}, {0, -1}
         };
 
+        int capturas = 0;
         for (int[] d : dirs) {
-            Posicion p = new Posicion(
+            Posicion movimientoSimple = new Posicion(
                     origen.getFila() + d[0],
                     origen.getColumna() + d[1]
             );
 
-            Casilla c = tablero.getCasilla(p);
+            if (esMovimientoValido(pieza, origen, movimientoSimple, tablero)) {
+                movimientos.add(movimientoSimple);
+            }
 
-            if (c != null && !c.isOcupada()) {
-                movimientos.add(p);
+            Posicion captura = new Posicion(
+                    origen.getFila() + d[0] * 2,
+                    origen.getColumna() + d[1] * 2
+            );
+
+            if (esMovimientoValido(pieza, origen, captura, tablero)) {
+                movimientos.add(captura);
+                capturas++;
             }
         }
 
-        return new Ruta(movimientos, 0);
+        return new Ruta(movimientos, capturas);
     }
 
     @Override
     public void inicializarTablero(Tablero tablero) {
-
-        // ejemplo básico (lo ajustas a reglas reales después)
-
-        for (int f = 0; f < 3; f++) {
-            for (int c = 0; c < 8; c++) {
-                if ((f + c) % 2 == 0) {
-                    tablero.getCasilla(new Posicion(f, c))
-                           .setPieza(new Pieza(COLOR.NEGRA));
-                }
-            }
+        for (Casilla casilla : tablero.getCasillas()) {
+            casilla.vaciar();
         }
 
-        for (int f = 5; f < 8; f++) {
-            for (int c = 0; c < 8; c++) {
-                if ((f + c) % 2 == 0) {
-                    tablero.getCasilla(new Posicion(f, c))
-                           .setPieza(new Pieza(COLOR.BLANCA));
-                }
-            }
+        for (int fila = 1; fila <= 2; fila++) {
+            colocarFila(tablero, fila, COLOR.NEGRA);
+        }
+
+        for (int fila = 5; fila <= 6; fila++) {
+            colocarFila(tablero, fila, COLOR.BLANCA);
+        }
+    }
+
+    private void colocarFila(Tablero tablero, int fila, COLOR color) {
+        for (int columna = 0; columna < 8; columna++) {
+            tablero.getCasilla(new Posicion(fila, columna)).setPieza(new Pieza(color));
         }
     }
 
     private Posicion buscarPosicion(Pieza pieza, Tablero tablero) {
-
         for (Casilla c : tablero.getCasillas()) {
             if (c.isOcupada() && c.getPieza() == pieza) {
                 return c.getPosicion();

@@ -10,6 +10,4 @@ public interface EstadoJuego {
     void manejarTurno(Juego juego);
 
     boolean esJuegoTerminado(Juego juego);
-
-    void manejarTurno();
 }
