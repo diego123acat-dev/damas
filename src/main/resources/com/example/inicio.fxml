@@ -10,6 +10,7 @@
             prefWidth="1000.0"
             xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="controllers.InicioController"
             style="-fx-background-color: #ECE3DB;">
 
     <children>
@@ -39,7 +40,7 @@
                            fitWidth="45.0"
                            preserveRatio="true">
                     <image>
-                        <Image url="@ficha_oscura.png"/>
+                        <Image url="@../Images/ficha%20oscura.jpg"/>
                     </image>
                 </ImageView>
 
@@ -49,7 +50,7 @@
                            fitWidth="45.0"
                            preserveRatio="true">
                     <image>
-                        <Image url="@ficha_clara.png"/>
+                        <Image url="@../Images/ficha%20clara.jpg"/>
                     </image>
                 </ImageView>
 
@@ -156,6 +157,7 @@
                 <!-- BOTON INICIAR -->
 
                 <Button text="Iniciar"
+                        onAction="#iniciarPartida"
                         prefWidth="250.0"
                         prefHeight="75.0"
                         style="-fx-background-color: #F6F0EA;
@@ -169,6 +171,7 @@
                 <!-- BOTON SALIR -->
 
                 <Button text="Salir"
+                        onAction="#salir"
                         prefWidth="250.0"
                         prefHeight="75.0"
                         style="-fx-background-color: #F6F0EA;
