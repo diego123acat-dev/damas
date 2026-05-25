@@ -79,7 +79,8 @@
 
                 <!-- LISTA SCORES -->
 
-                <VBox spacing="18.0"
+                <VBox fx:id="scoresContainer"
+                      spacing="18.0"
                       alignment="CENTER_LEFT">
 
                     <!-- SCORE 1 -->

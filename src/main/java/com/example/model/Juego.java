@@ -22,6 +22,10 @@ public class Juego implements Sujeto {
     private COLOR ganador;
     private String mensajeFinJuego;
     private int movimientosSinProgreso;
+    private int capturasBlancas;
+    private int capturasNegras;
+    private int coronacionesBlancas;
+    private int coronacionesNegras;
     private Map<String, Integer> repeticionesPosicion;
 
     private List<Observador> observadores;
@@ -36,6 +40,10 @@ public class Juego implements Sujeto {
         this.ganador = null;
         this.mensajeFinJuego = "";
         this.movimientosSinProgreso = 0;
+        this.capturasBlancas = 0;
+        this.capturasNegras = 0;
+        this.coronacionesBlancas = 0;
+        this.coronacionesNegras = 0;
         this.repeticionesPosicion = new HashMap<>();
         this.observadores = new ArrayList<>();
 
@@ -135,6 +143,7 @@ public class Juego implements Sujeto {
         Posicion posicionCapturada = buscarPosicionCapturada(movimiento, pieza);
         if (posicionCapturada != null) {
             tablero.eliminarPieza(posicionCapturada);
+            registrarCaptura(pieza.getColor());
             return true;
         }
 
@@ -205,10 +214,27 @@ public class Juego implements Sujeto {
         if ((pieza.getColor() == COLOR.BLANCA && destino.getFila() == 0)
                 || (pieza.getColor() == COLOR.NEGRA && destino.getFila() == 7)) {
             pieza.coronar();
+            registrarCoronacion(pieza.getColor());
             return true;
         }
 
         return false;
+    }
+
+    private void registrarCaptura(COLOR color) {
+        if (color == COLOR.BLANCA) {
+            capturasBlancas++;
+        } else {
+            capturasNegras++;
+        }
+    }
+
+    private void registrarCoronacion(COLOR color) {
+        if (color == COLOR.BLANCA) {
+            coronacionesBlancas++;
+        } else {
+            coronacionesNegras++;
+        }
     }
 
     private void actualizarContadorProgreso(boolean huboCaptura, boolean huboCoronacion) {
@@ -317,7 +343,8 @@ public class Juego implements Sujeto {
         this.juegoTerminado = true;
         this.empate = false;
         this.ganador = ganador;
-        this.mensajeFinJuego = "Gana " + nombreColor(ganador) + ". " + razon;
+        this.mensajeFinJuego = "Gana " + nombreColor(ganador) + ". " + razon
+                + "\nPuntaje final: " + calcularPuntajeFinal(ganador);
     }
 
     private void terminarEnEmpate(String razon) {
@@ -357,6 +384,10 @@ public class Juego implements Sujeto {
         this.ganador = null;
         this.mensajeFinJuego = "";
         this.movimientosSinProgreso = 0;
+        this.capturasBlancas = 0;
+        this.capturasNegras = 0;
+        this.coronacionesBlancas = 0;
+        this.coronacionesNegras = 0;
         this.repeticionesPosicion.clear();
         estrategia.inicializarTablero(tablero);
         registrarPosicionActual();
@@ -398,5 +429,15 @@ public class Juego implements Sujeto {
 
     public String getMensajeFinJuego() {
         return mensajeFinJuego;
+    }
+
+    public int getPuntaje(COLOR color) {
+        int capturas = color == COLOR.BLANCA ? capturasBlancas : capturasNegras;
+        int coronaciones = color == COLOR.BLANCA ? coronacionesBlancas : coronacionesNegras;
+        return capturas * 10 + coronaciones * 15;
+    }
+
+    public int calcularPuntajeFinal(COLOR color) {
+        return getPuntaje(color) + 50;
     }
 }

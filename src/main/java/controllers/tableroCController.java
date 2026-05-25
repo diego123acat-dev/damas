@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.dao.Score;
+import com.example.dao.ScoreDAO;
 import com.example.model.COLOR;
 import com.example.model.Casilla;
 import com.example.model.Juego;
@@ -21,6 +23,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.ButtonBar.ButtonData;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
+import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
@@ -47,6 +50,7 @@ public class tableroCController {
     private Label J2Score;
 
     private Juego juego;
+    private ScoreDAO scoreDAO;
     private Pane[][] casillas;
     private Posicion seleccionada;
     private Posicion posicionInvalida;
@@ -57,6 +61,7 @@ public class tableroCController {
     @FXML
     private void initialize() {
         juego = new Juego(new DamasTurcas());
+        scoreDAO = new ScoreDAO();
         casillas = new Pane[8][8];
         destinosLegales = new ArrayList<>();
         imagenBlanca = cargarImagen("/com/Images/ficha clara.jpg");
@@ -150,6 +155,8 @@ public class tableroCController {
     }
 
     private void mostrarFinDelJuego() {
+        guardarScoreSiHayGanador();
+
         ButtonType nuevaPartida = new ButtonType("Nueva partida");
         ButtonType salir = new ButtonType("Salir", ButtonData.CANCEL_CLOSE);
 
@@ -167,10 +174,27 @@ public class tableroCController {
         }
     }
 
-    private void pintarTablero() {
-        int blancas = 0;
-        int negras = 0;
+    private void guardarScoreSiHayGanador() {
+        if (juego.isEmpate() || juego.getGanador() == null) {
+            return;
+        }
 
+        String colorGanador = juego.getGanador() == COLOR.BLANCA ? "Blancas" : "Negras";
+        TextInputDialog dialog = new TextInputDialog(colorGanador);
+        dialog.setTitle("Guardar score");
+        dialog.setHeaderText("Ganaron las " + colorGanador.toLowerCase());
+        dialog.setContentText("Nombre del jugador:");
+
+        Optional<String> respuesta = dialog.showAndWait();
+        String jugador = respuesta.orElse(colorGanador).trim();
+        if (jugador.isEmpty()) {
+            jugador = colorGanador;
+        }
+
+        scoreDAO.guardarScore(new Score(jugador, juego.calcularPuntajeFinal(juego.getGanador())));
+    }
+
+    private void pintarTablero() {
         for (int fila = 0; fila < 8; fila++) {
             for (int columna = 0; columna < 8; columna++) {
                 Pane pane = casillas[fila][columna];
@@ -184,11 +208,6 @@ public class tableroCController {
                 Casilla casilla = juego.getTablero().getCasilla(new Posicion(fila, columna));
                 if (casilla != null && casilla.isOcupada()) {
                     Pieza pieza = casilla.getPieza();
-                    if (pieza.getColor() == COLOR.BLANCA) {
-                        blancas++;
-                    } else {
-                        negras++;
-                    }
                     pane.getChildren().add(crearVistaPieza(pieza));
                 } else if (esDestinoLegal(new Posicion(fila, columna))) {
                     pane.getChildren().add(crearIndicadorDestino());
@@ -196,8 +215,8 @@ public class tableroCController {
             }
         }
 
-        J1Score.setText(String.valueOf(negras));
-        J2Score.setText(String.valueOf(blancas));
+        J1Score.setText(String.valueOf(juego.getPuntaje(COLOR.NEGRA)));
+        J2Score.setText(String.valueOf(juego.getPuntaje(COLOR.BLANCA)));
     }
 
     private String estiloCasilla(int fila, int columna) {
