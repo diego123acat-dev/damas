@@ -1,6 +1,9 @@
 package controllers;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 import com.example.model.COLOR;
 import com.example.model.Casilla;
@@ -10,21 +13,29 @@ import com.example.model.Pieza;
 import com.example.model.Posicion;
 import com.example.strategy.DamasTurcas;
 
+import javafx.application.Platform;
+import javafx.animation.PauseTransition;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar.ButtonData;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.util.Duration;
 
 public class tableroCController {
 
     private static final String COLOR_CLARO = "#F4E7D3";
     private static final String COLOR_OSCURO = "#B97A3D";
     private static final String COLOR_SELECCION = "#E8C547";
+    private static final String COLOR_INVALIDO = "#D95D5D";
 
     @FXML
     private GridPane tableroGrid;
@@ -38,6 +49,8 @@ public class tableroCController {
     private Juego juego;
     private Pane[][] casillas;
     private Posicion seleccionada;
+    private Posicion posicionInvalida;
+    private List<Posicion> destinosLegales;
     private Image imagenBlanca;
     private Image imagenNegra;
 
@@ -45,6 +58,7 @@ public class tableroCController {
     private void initialize() {
         juego = new Juego(new DamasTurcas());
         casillas = new Pane[8][8];
+        destinosLegales = new ArrayList<>();
         imagenBlanca = cargarImagen("/com/Images/ficha clara.jpg");
         imagenNegra = cargarImagen("/com/Images/ficha oscura.jpg");
 
@@ -55,6 +69,8 @@ public class tableroCController {
     @FXML
     private void reiniciarJuego() {
         seleccionada = null;
+        posicionInvalida = null;
+        destinosLegales.clear();
         juego.iniciarNuevoJuego();
         pintarTablero();
     }
@@ -84,6 +100,7 @@ public class tableroCController {
             if (casilla != null && casilla.isOcupada()
                     && casilla.getPieza().getColor() == juego.getTurnoActual()) {
                 seleccionada = posicion;
+                destinosLegales = juego.obtenerDestinosLegales(posicion);
                 pintarTablero();
             }
             return;
@@ -91,14 +108,63 @@ public class tableroCController {
 
         if (mismaPosicion(seleccionada, posicion)) {
             seleccionada = null;
+            destinosLegales.clear();
+            pintarTablero();
+            return;
+        }
+
+        if (casilla != null && casilla.isOcupada()
+                && casilla.getPieza().getColor() == juego.getTurnoActual()) {
+            seleccionada = posicion;
+            destinosLegales = juego.obtenerDestinosLegales(posicion);
             pintarTablero();
             return;
         }
 
         Movimiento movimiento = new Movimiento(seleccionada, posicion);
-        juego.procesarMovimiento(movimiento);
-        seleccionada = null;
+        boolean movimientoRealizado = juego.intentarProcesarMovimiento(movimiento);
+
+        if (movimientoRealizado) {
+            seleccionada = null;
+            destinosLegales.clear();
+            pintarTablero();
+
+            if (juego.esFinDelJuego()) {
+                mostrarFinDelJuego();
+            }
+        } else {
+            marcarMovimientoInvalido(posicion);
+        }
+    }
+
+    private void marcarMovimientoInvalido(Posicion posicion) {
+        posicionInvalida = posicion;
         pintarTablero();
+
+        PauseTransition pausa = new PauseTransition(Duration.millis(650));
+        pausa.setOnFinished(event -> {
+            posicionInvalida = null;
+            pintarTablero();
+        });
+        pausa.play();
+    }
+
+    private void mostrarFinDelJuego() {
+        ButtonType nuevaPartida = new ButtonType("Nueva partida");
+        ButtonType salir = new ButtonType("Salir", ButtonData.CANCEL_CLOSE);
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Juego terminado");
+        alert.setHeaderText(juego.isEmpate() ? "Empate" : "Fin de la partida");
+        alert.setContentText(juego.getMensajeFinJuego());
+        alert.getButtonTypes().setAll(nuevaPartida, salir);
+
+        Optional<ButtonType> respuesta = alert.showAndWait();
+        if (respuesta.isPresent() && respuesta.get() == nuevaPartida) {
+            reiniciarJuego();
+        } else {
+            Platform.exit();
+        }
     }
 
     private void pintarTablero() {
@@ -124,6 +190,8 @@ public class tableroCController {
                         negras++;
                     }
                     pane.getChildren().add(crearVistaPieza(pieza));
+                } else if (esDestinoLegal(new Posicion(fila, columna))) {
+                    pane.getChildren().add(crearIndicadorDestino());
                 }
             }
         }
@@ -133,6 +201,14 @@ public class tableroCController {
     }
 
     private String estiloCasilla(int fila, int columna) {
+        boolean estaInvalida = posicionInvalida != null
+                && posicionInvalida.getFila() == fila
+                && posicionInvalida.getColumna() == columna;
+
+        if (estaInvalida) {
+            return "-fx-background-color: " + COLOR_INVALIDO + ";";
+        }
+
         boolean estaSeleccionada = seleccionada != null
                 && seleccionada.getFila() == fila
                 && seleccionada.getColumna() == columna;
@@ -144,24 +220,46 @@ public class tableroCController {
         return "-fx-background-color: " + color + ";";
     }
 
+    private Node crearIndicadorDestino() {
+        StackPane contenedor = new StackPane();
+        contenedor.setPrefSize(70, 70);
+
+        Circle punto = new Circle(9);
+        punto.setFill(Color.rgb(91, 104, 86, 0.55));
+        punto.setStroke(Color.rgb(255, 255, 255, 0.65));
+        punto.setStrokeWidth(2);
+
+        contenedor.getChildren().add(punto);
+        return contenedor;
+    }
+
     private Node crearVistaPieza(Pieza pieza) {
         Image imagen = pieza.getColor() == COLOR.BLANCA ? imagenBlanca : imagenNegra;
+        StackPane contenedor = new StackPane();
+        contenedor.setPrefSize(70, 70);
 
         if (imagen != null && !imagen.isError()) {
             ImageView imageView = new ImageView(imagen);
             imageView.setFitWidth(54);
             imageView.setFitHeight(54);
             imageView.setPreserveRatio(true);
-            imageView.setLayoutX(8);
-            imageView.setLayoutY(8);
-            return imageView;
+            contenedor.getChildren().add(imageView);
+        } else {
+            Circle ficha = new Circle(24);
+            ficha.setFill(pieza.getColor() == COLOR.BLANCA ? Color.BEIGE : Color.SADDLEBROWN);
+            ficha.setStroke(Color.web("#5E371E"));
+            ficha.setStrokeWidth(2);
+            contenedor.getChildren().add(ficha);
         }
 
-        Circle ficha = new Circle(35, 35, 24);
-        ficha.setFill(pieza.getColor() == COLOR.BLANCA ? Color.BEIGE : Color.SADDLEBROWN);
-        ficha.setStroke(Color.web("#5E371E"));
-        ficha.setStrokeWidth(2);
-        return ficha;
+        if (pieza.isReina()) {
+            Label marcaReina = new Label("R");
+            marcaReina.setStyle("-fx-font-size: 22; -fx-font-weight: bold; -fx-text-fill: #E8C547; "
+                    + "-fx-effect: dropshadow(gaussian, #3A2413, 2, 0.8, 0, 0);");
+            contenedor.getChildren().add(marcaReina);
+        }
+
+        return contenedor;
     }
 
     private Image cargarImagen(String ruta) {
@@ -171,5 +269,15 @@ public class tableroCController {
 
     private boolean mismaPosicion(Posicion a, Posicion b) {
         return a.getFila() == b.getFila() && a.getColumna() == b.getColumna();
+    }
+
+    private boolean esDestinoLegal(Posicion posicion) {
+        for (Posicion destino : destinosLegales) {
+            if (mismaPosicion(destino, posicion)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

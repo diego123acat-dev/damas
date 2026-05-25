@@ -28,7 +28,17 @@ public class DamasTurcas implements EstrategiaJuego {
         int dy = destino.getColumna() - origen.getColumna();
 
         if (dx != 0 && dy != 0) return false;
+        if (dx == 0 && dy == 0) return false;
+        if (!pieza.isReina() && esMovimientoHaciaAtras(pieza, dx)) return false;
 
+        return pieza.isReina()
+                ? esMovimientoValidoReina(pieza, origen, destino, tablero)
+                : esMovimientoValidoPiezaNormal(pieza, origen, destino, tablero);
+    }
+
+    private boolean esMovimientoValidoPiezaNormal(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
+        int dx = destino.getFila() - origen.getFila();
+        int dy = destino.getColumna() - origen.getColumna();
         int pasos = Math.abs(dx) + Math.abs(dy);
 
         if (pasos == 1) {
@@ -41,13 +51,59 @@ public class DamasTurcas implements EstrategiaJuego {
                     origen.getColumna() + Integer.signum(dy)
             );
 
-            Casilla casillaIntermedia = tablero.getCasilla(intermedia);
-            return casillaIntermedia != null
-                    && casillaIntermedia.isOcupada()
-                    && casillaIntermedia.getPieza().getColor() != pieza.getColor();
+            return hayPiezaContraria(tablero, intermedia, pieza.getColor());
         }
 
         return false;
+    }
+
+    private boolean esMovimientoValidoReina(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
+        int pasoFila = Integer.signum(destino.getFila() - origen.getFila());
+        int pasoColumna = Integer.signum(destino.getColumna() - origen.getColumna());
+        int piezasContrarias = 0;
+
+        int fila = origen.getFila() + pasoFila;
+        int columna = origen.getColumna() + pasoColumna;
+
+        while (fila != destino.getFila() || columna != destino.getColumna()) {
+            Casilla casilla = tablero.getCasilla(new Posicion(fila, columna));
+            if (casilla == null) return false;
+
+            if (casilla.isOcupada()) {
+                if (casilla.getPieza().getColor() == pieza.getColor()) {
+                    return false;
+                }
+
+                piezasContrarias++;
+                if (piezasContrarias > 1) {
+                    return false;
+                }
+            }
+
+            fila += pasoFila;
+            columna += pasoColumna;
+        }
+
+        return true;
+    }
+
+    private boolean esMovimientoHaciaAtras(Pieza pieza, int dx) {
+        if (dx == 0) {
+            return false;
+        }
+
+        if (pieza.getColor() == COLOR.BLANCA) {
+            return dx > 0;
+        }
+
+        return dx < 0;
+    }
+
+    private boolean hayPiezaContraria(Tablero tablero, Posicion posicion, COLOR color) {
+        Casilla casilla = tablero.getCasilla(posicion);
+        return casilla != null
+                && casilla.isOcupada()
+                && casilla.getPieza().getColor() != color;
     }
 
     @Override
