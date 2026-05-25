@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.example.model.COLOR;
 import com.example.model.Casilla;
+import com.example.model.Movimiento;
 import com.example.model.Pieza;
 import com.example.model.Posicion;
 import com.example.model.Ruta;
@@ -18,31 +19,57 @@ public class DamasTurcas implements EstrategiaJuego {
             Posicion origen,
             Posicion destino,
             Tablero tablero) {
+        return crearMovimiento(pieza, origen, destino, tablero) != null;
+    }
 
-        if (pieza == null) return false;
+    @Override
+    public Movimiento crearMovimiento(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
+        if (pieza == null) return null;
 
         Casilla casillaDestino = tablero.getCasilla(destino);
-        if (casillaDestino == null || casillaDestino.isOcupada()) return false;
+        if (casillaDestino == null || casillaDestino.isOcupada()) return null;
 
         int dx = destino.getFila() - origen.getFila();
         int dy = destino.getColumna() - origen.getColumna();
 
-        if (dx != 0 && dy != 0) return false;
-        if (dx == 0 && dy == 0) return false;
-        if (!pieza.isReina() && esMovimientoHaciaAtras(pieza, dx)) return false;
+        if (dx != 0 && dy != 0) return null;
+        if (dx == 0 && dy == 0) return null;
+        if (!pieza.isReina() && esMovimientoHaciaAtras(pieza, dx)) return null;
 
         return pieza.isReina()
-                ? esMovimientoValidoReina(pieza, origen, destino, tablero)
-                : esMovimientoValidoPiezaNormal(pieza, origen, destino, tablero);
+                ? crearMovimientoReina(pieza, origen, destino, tablero)
+                : crearMovimientoPiezaNormal(pieza, origen, destino, tablero);
     }
 
-    private boolean esMovimientoValidoPiezaNormal(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
+    @Override
+    public List<Movimiento> obtenerMovimientosLegales(Pieza pieza, Posicion origen, Tablero tablero) {
+        List<Movimiento> movimientos = new ArrayList<>();
+
+        for (int fila = 0; fila < 8; fila++) {
+            for (int columna = 0; columna < 8; columna++) {
+                Movimiento movimiento = crearMovimiento(
+                        pieza,
+                        origen,
+                        new Posicion(fila, columna),
+                        tablero
+                );
+
+                if (movimiento != null) {
+                    movimientos.add(movimiento);
+                }
+            }
+        }
+
+        return movimientos;
+    }
+
+    private Movimiento crearMovimientoPiezaNormal(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
         int dx = destino.getFila() - origen.getFila();
         int dy = destino.getColumna() - origen.getColumna();
         int pasos = Math.abs(dx) + Math.abs(dy);
 
         if (pasos == 1) {
-            return true;
+            return new Movimiento(origen, destino);
         }
 
         if (pasos == 2) {
@@ -51,40 +78,50 @@ public class DamasTurcas implements EstrategiaJuego {
                     origen.getColumna() + Integer.signum(dy)
             );
 
-            return hayPiezaContraria(tablero, intermedia, pieza.getColor());
+            if (hayPiezaContraria(tablero, intermedia, pieza.getColor())) {
+                Movimiento movimiento = new Movimiento(origen, destino);
+                movimiento.agregarCaptura(intermedia);
+                return movimiento;
+            }
         }
 
-        return false;
+        return null;
     }
 
-    private boolean esMovimientoValidoReina(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
+    private Movimiento crearMovimientoReina(Pieza pieza, Posicion origen, Posicion destino, Tablero tablero) {
         int pasoFila = Integer.signum(destino.getFila() - origen.getFila());
         int pasoColumna = Integer.signum(destino.getColumna() - origen.getColumna());
-        int piezasContrarias = 0;
+        Posicion posicionCapturada = null;
 
         int fila = origen.getFila() + pasoFila;
         int columna = origen.getColumna() + pasoColumna;
 
         while (fila != destino.getFila() || columna != destino.getColumna()) {
-            Casilla casilla = tablero.getCasilla(new Posicion(fila, columna));
-            if (casilla == null) return false;
+            Posicion posicionActual = new Posicion(fila, columna);
+            Casilla casilla = tablero.getCasilla(posicionActual);
+            if (casilla == null) return null;
 
             if (casilla.isOcupada()) {
                 if (casilla.getPieza().getColor() == pieza.getColor()) {
-                    return false;
+                    return null;
                 }
 
-                piezasContrarias++;
-                if (piezasContrarias > 1) {
-                    return false;
+                if (posicionCapturada != null) {
+                    return null;
                 }
+
+                posicionCapturada = posicionActual;
             }
 
             fila += pasoFila;
             columna += pasoColumna;
         }
 
-        return true;
+        Movimiento movimiento = new Movimiento(origen, destino);
+        if (posicionCapturada != null) {
+            movimiento.agregarCaptura(posicionCapturada);
+        }
+        return movimiento;
     }
 
     private boolean esMovimientoHaciaAtras(Pieza pieza, int dx) {
@@ -108,39 +145,20 @@ public class DamasTurcas implements EstrategiaJuego {
 
     @Override
     public Ruta calcularMejorRuta(Pieza pieza, Tablero tablero) {
-        List<Posicion> movimientos = new ArrayList<>();
+        List<Posicion> destinos = new ArrayList<>();
         Posicion origen = buscarPosicion(pieza, tablero);
 
-        if (origen == null) return new Ruta(movimientos, 0);
-
-        int[][] dirs = {
-                {1, 0}, {-1, 0},
-                {0, 1}, {0, -1}
-        };
+        if (origen == null) return new Ruta(destinos, 0);
 
         int capturas = 0;
-        for (int[] d : dirs) {
-            Posicion movimientoSimple = new Posicion(
-                    origen.getFila() + d[0],
-                    origen.getColumna() + d[1]
-            );
-
-            if (esMovimientoValido(pieza, origen, movimientoSimple, tablero)) {
-                movimientos.add(movimientoSimple);
-            }
-
-            Posicion captura = new Posicion(
-                    origen.getFila() + d[0] * 2,
-                    origen.getColumna() + d[1] * 2
-            );
-
-            if (esMovimientoValido(pieza, origen, captura, tablero)) {
-                movimientos.add(captura);
-                capturas++;
+        for (Movimiento movimiento : obtenerMovimientosLegales(pieza, origen, tablero)) {
+            destinos.add(movimiento.getDestino());
+            if (movimiento.esCaptura()) {
+                capturas += movimiento.cantidadCapturas();
             }
         }
 
-        return new Ruta(movimientos, capturas);
+        return new Ruta(destinos, capturas);
     }
 
     @Override

@@ -68,26 +68,26 @@ public class Juego implements Sujeto {
             return false;
         }
 
-        boolean valido = estrategia.esMovimientoValido(
+        Movimiento movimientoCompleto = estrategia.crearMovimiento(
                 pieza,
                 movimiento.getOrigen(),
                 movimiento.getDestino(),
                 tablero
         );
 
-        if (!valido) {
+        if (movimientoCompleto == null) {
             System.out.println("Movimiento invalido.");
             return false;
         }
 
-        if (hayCapturasDisponibles(turnoActual) && !esMovimientoDeCaptura(movimiento, pieza)) {
+        if (hayCapturasDisponibles(turnoActual) && !movimientoCompleto.esCaptura()) {
             System.out.println("Hay una captura obligatoria.");
             return false;
         }
 
-        boolean huboCaptura = eliminarPiezaCapturada(movimiento, pieza);
-        tablero.moverPieza(movimiento.getOrigen(), movimiento.getDestino());
-        boolean huboCoronacion = coronarSiCorresponde(pieza, movimiento.getDestino());
+        boolean huboCaptura = aplicarCapturas(movimientoCompleto, pieza);
+        tablero.moverPieza(movimientoCompleto.getOrigen(), movimientoCompleto.getDestino());
+        boolean huboCoronacion = coronarSiCorresponde(pieza, movimientoCompleto.getDestino());
 
         if (!huboCaptura) {
             estado.manejarTurno(this);
@@ -120,34 +120,26 @@ public class Juego implements Sujeto {
 
         boolean debeCapturar = hayCapturasDisponibles(turnoActual);
 
-        for (int fila = 0; fila < 8; fila++) {
-            for (int columna = 0; columna < 8; columna++) {
-                Posicion destino = new Posicion(fila, columna);
-                Movimiento movimiento = new Movimiento(origen, destino);
-
-                if (!estrategia.esMovimientoValido(pieza, origen, destino, tablero)) {
-                    continue;
-                }
-
-                boolean esCaptura = esMovimientoDeCaptura(movimiento, pieza);
-                if (!debeCapturar || esCaptura) {
-                    destinos.add(destino);
-                }
+        for (Movimiento movimiento : estrategia.obtenerMovimientosLegales(pieza, origen, tablero)) {
+            if (!debeCapturar || movimiento.esCaptura()) {
+                destinos.add(movimiento.getDestino());
             }
         }
 
         return destinos;
     }
 
-    private boolean eliminarPiezaCapturada(Movimiento movimiento, Pieza pieza) {
-        Posicion posicionCapturada = buscarPosicionCapturada(movimiento, pieza);
-        if (posicionCapturada != null) {
-            tablero.eliminarPieza(posicionCapturada);
-            registrarCaptura(pieza.getColor());
-            return true;
+    private boolean aplicarCapturas(Movimiento movimiento, Pieza pieza) {
+        if (!movimiento.esCaptura()) {
+            return false;
         }
 
-        return false;
+        for (Posicion captura : movimiento.getCapturas()) {
+            tablero.eliminarPieza(captura);
+            registrarCaptura(pieza.getColor());
+        }
+
+        return true;
     }
 
     private boolean hayCapturasDisponibles(COLOR color) {
@@ -159,51 +151,14 @@ public class Juego implements Sujeto {
             Pieza pieza = casilla.getPieza();
             Posicion origen = casilla.getPosicion();
 
-            for (int fila = 0; fila < 8; fila++) {
-                for (int columna = 0; columna < 8; columna++) {
-                    Posicion destino = new Posicion(fila, columna);
-                    Movimiento movimiento = new Movimiento(origen, destino);
-
-                    if (estrategia.esMovimientoValido(pieza, origen, destino, tablero)
-                            && esMovimientoDeCaptura(movimiento, pieza)) {
-                        return true;
-                    }
+            for (Movimiento movimiento : estrategia.obtenerMovimientosLegales(pieza, origen, tablero)) {
+                if (movimiento.esCaptura()) {
+                    return true;
                 }
             }
         }
 
         return false;
-    }
-
-    private boolean esMovimientoDeCaptura(Movimiento movimiento, Pieza pieza) {
-        return buscarPosicionCapturada(movimiento, pieza) != null;
-    }
-
-    private Posicion buscarPosicionCapturada(Movimiento movimiento, Pieza pieza) {
-        int dx = movimiento.getDestino().getFila() - movimiento.getOrigen().getFila();
-        int dy = movimiento.getDestino().getColumna() - movimiento.getOrigen().getColumna();
-
-        int pasoFila = Integer.signum(dx);
-        int pasoColumna = Integer.signum(dy);
-
-        int fila = movimiento.getOrigen().getFila() + pasoFila;
-        int columna = movimiento.getOrigen().getColumna() + pasoColumna;
-
-        while (fila != movimiento.getDestino().getFila()
-                || columna != movimiento.getDestino().getColumna()) {
-            Posicion posicionActual = new Posicion(fila, columna);
-            Casilla casillaActual = tablero.getCasilla(posicionActual);
-
-            if (casillaActual != null && casillaActual.isOcupada()
-                    && casillaActual.getPieza().getColor() != pieza.getColor()) {
-                return posicionActual;
-            }
-
-            fila += pasoFila;
-            columna += pasoColumna;
-        }
-
-        return null;
     }
 
     private boolean coronarSiCorresponde(Pieza pieza, Posicion destino) {
@@ -296,13 +251,8 @@ public class Juego implements Sujeto {
             Pieza pieza = casilla.getPieza();
             Posicion origen = casilla.getPosicion();
 
-            for (int fila = 0; fila < 8; fila++) {
-                for (int columna = 0; columna < 8; columna++) {
-                    Posicion destino = new Posicion(fila, columna);
-                    if (estrategia.esMovimientoValido(pieza, origen, destino, tablero)) {
-                        return true;
-                    }
-                }
+            if (!estrategia.obtenerMovimientosLegales(pieza, origen, tablero).isEmpty()) {
+                return true;
             }
         }
 
