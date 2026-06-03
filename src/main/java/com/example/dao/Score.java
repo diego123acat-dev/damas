@@ -3,6 +3,7 @@ package com.example.dao;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Objects;
 
 public class Score implements Serializable {
 
@@ -28,5 +29,26 @@ public class Score implements Serializable {
 
     public String getFecha() {
         return fecha;
+    }
+
+    @Override
+    public boolean equals(Object objeto) {
+        if (this == objeto) {
+            return true;
+        }
+
+        if (!(objeto instanceof Score)) {
+            return false;
+        }
+
+        Score score = (Score) objeto;
+        return puntos == score.puntos
+                && Objects.equals(jugador, score.jugador)
+                && Objects.equals(fecha, score.fecha);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(jugador, puntos, fecha);
     }
 }

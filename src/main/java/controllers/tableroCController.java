@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import com.example.dao.DAO;
 import com.example.dao.Score;
 import com.example.dao.ScoreDAO;
 import com.example.model.COLOR;
@@ -50,7 +51,7 @@ public class tableroCController {
     private Label J2Score;
 
     private Juego juego;
-    private ScoreDAO scoreDAO;
+    private DAO<Score> scoreDAO;
     private Pane[][] casillas;
     private Posicion seleccionada;
     private Posicion posicionInvalida;
@@ -191,7 +192,7 @@ public class tableroCController {
             jugador = colorGanador;
         }
 
-        scoreDAO.guardarScore(new Score(jugador, juego.calcularPuntajeFinal(juego.getGanador())));
+        scoreDAO.guardar(new Score(jugador, juego.calcularPuntajeFinal(juego.getGanador())));
     }
 
     private void pintarTablero() {

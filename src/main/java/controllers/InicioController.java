@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import com.example.App;
+import com.example.dao.DAO;
 import com.example.dao.Score;
 import com.example.dao.ScoreDAO;
 
@@ -20,7 +21,7 @@ public class InicioController {
     @FXML
     private VBox scoresContainer;
 
-    private final ScoreDAO scoreDAO = new ScoreDAO();
+    private final DAO<Score> scoreDAO = new ScoreDAO();
 
     @FXML
     private void initialize() {
@@ -39,7 +40,7 @@ public class InicioController {
 
     private void cargarScores() {
         scoresContainer.getChildren().clear();
-        List<Score> scores = scoreDAO.obtenerScores();
+        List<Score> scores = scoreDAO.obtenerTodos();
 
         if (scores.isEmpty()) {
             scoresContainer.getChildren().add(crearFilaScore("Sin partidas guardadas", "-"));

@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public class ScoreDAO {
+public class ScoreDAO implements DAO<Score> {
 
     private static final int LIMITE_SCORES = 10;
 
@@ -20,8 +20,9 @@ public class ScoreDAO {
         this.conexion = new ConexionDB();
     }
 
-    public void guardarScore(Score score) {
-        List<Score> scores = obtenerScores();
+    @Override
+    public void guardar(Score score) {
+        List<Score> scores = obtenerTodos();
         scores.add(score);
         scores.sort(Comparator.comparingInt(Score::getPuntos).reversed());
 
@@ -32,7 +33,8 @@ public class ScoreDAO {
         escribirScores(scores);
     }
 
-    public List<Score> obtenerScores() {
+    @Override
+    public List<Score> obtenerTodos() {
         Path ruta = conexion.obtenerRutaScores();
         if (!Files.exists(ruta)) {
             return new ArrayList<>();
@@ -60,6 +62,26 @@ public class ScoreDAO {
         }
 
         return new ArrayList<>();
+    }
+
+    @Override
+    public void eliminar(Score score) {
+        List<Score> scores = obtenerTodos();
+        scores.remove(score);
+        escribirScores(scores);
+    }
+
+    @Override
+    public void eliminarTodos() {
+        escribirScores(new ArrayList<>());
+    }
+
+    public void guardarScore(Score score) {
+        guardar(score);
+    }
+
+    public List<Score> obtenerScores() {
+        return obtenerTodos();
     }
 
     private void escribirScores(List<Score> scores) {
