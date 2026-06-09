@@ -1,7 +1,9 @@
 package com.example.strategy;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.example.model.COLOR;
 import com.example.model.Casilla;
@@ -15,6 +17,13 @@ import com.example.model.Tablero;
 
 //Clase para aplicar las reglas de las damas turcas
 public class DamasTurcas implements EstrategiaJuego {
+
+    private int movimientosSinProgreso;
+    private int capturasBlancas;
+    private int capturasNegras;
+    private int coronacionesBlancas;
+    private int coronacionesNegras;
+    private Map<String, Integer> repeticionesPosicion = new HashMap<>();
 
     //Metodo para validar un movimiento de damas turcas
     @Override
@@ -76,6 +85,30 @@ public class DamasTurcas implements EstrategiaJuego {
         boolean cambiarTurno = !huboCaptura;
 
         return new ResultadoMovimiento(true, huboCaptura, huboCoronacion, cambiarTurno, "");
+    }
+
+    //Metodo para registrar los datos despues de un movimiento
+    @Override
+    public void registrarMovimiento(
+            Tablero tablero,
+            COLOR turnoActual,
+            COLOR colorMovimiento,
+            ResultadoMovimiento resultado) {
+        if (resultado.isCaptura()) {
+            registrarCaptura(colorMovimiento);
+        }
+
+        if (resultado.isCoronacion()) {
+            registrarCoronacion(colorMovimiento);
+        }
+
+        if (resultado.isCaptura() || resultado.isCoronacion()) {
+            movimientosSinProgreso = 0;
+        } else {
+            movimientosSinProgreso++;
+        }
+
+        registrarPosicionActual(tablero, turnoActual);
     }
 
     //Metodo para obtener todos los movimientos legales
@@ -289,12 +322,12 @@ public class DamasTurcas implements EstrategiaJuego {
             return;
         }
 
-        if (juego.hayRepeticionDePosicion()) {
+        if (hayRepeticionDePosicion(juego.getTablero(), juego.getTurnoActual())) {
             juego.terminarEnEmpate("Empate por repeticion de posicion.");
             return;
         }
 
-        if (juego.getMovimientosSinProgreso() >= 50) {
+        if (movimientosSinProgreso >= 50) {
             juego.terminarEnEmpate("Empate por 50 movimientos sin capturas ni coronacion.");
         }
     }
@@ -340,7 +373,9 @@ public class DamasTurcas implements EstrategiaJuego {
 
     //Metodo para colocar las piezas iniciales
     @Override
-    public void inicializarTablero(Tablero tablero) {
+    public void inicializarTablero(Tablero tablero, COLOR turnoInicial) {
+        reiniciarDatos();
+
         for (Casilla casilla : tablero.getCasillas()) {
             casilla.vaciar();
         }
@@ -352,6 +387,89 @@ public class DamasTurcas implements EstrategiaJuego {
         for (int fila = 5; fila <= 6; fila++) {
             colocarFila(tablero, fila, COLOR.BLANCA);
         }
+
+        registrarPosicionActual(tablero, turnoInicial);
+    }
+
+    //Metodo para reiniciar los datos del juego
+    private void reiniciarDatos() {
+        this.movimientosSinProgreso = 0;
+        this.capturasBlancas = 0;
+        this.capturasNegras = 0;
+        this.coronacionesBlancas = 0;
+        this.coronacionesNegras = 0;
+        this.repeticionesPosicion.clear();
+    }
+
+    //Metodo para registrar una captura
+    private void registrarCaptura(COLOR color) {
+        if (color == COLOR.BLANCA) {
+            capturasBlancas++;
+        } else {
+            capturasNegras++;
+        }
+    }
+
+    //Metodo para registrar una coronacion
+    private void registrarCoronacion(COLOR color) {
+        if (color == COLOR.BLANCA) {
+            coronacionesBlancas++;
+        } else {
+            coronacionesNegras++;
+        }
+    }
+
+    //Metodo para registrar la posicion actual
+    private void registrarPosicionActual(Tablero tablero, COLOR turnoActual) {
+        String firma = crearFirmaPosicion(tablero, turnoActual);
+        repeticionesPosicion.put(firma, repeticionesPosicion.getOrDefault(firma, 0) + 1);
+    }
+
+    //Metodo para saber si hay repeticion de posicion
+    private boolean hayRepeticionDePosicion(Tablero tablero, COLOR turnoActual) {
+        return repeticionesPosicion.getOrDefault(crearFirmaPosicion(tablero, turnoActual), 0) >= 3;
+    }
+
+    //Metodo para crear la firma de la posicion
+    private String crearFirmaPosicion(Tablero tablero, COLOR turnoActual) {
+        StringBuilder firma = new StringBuilder();
+        firma.append(turnoActual).append('|');
+
+        for (int fila = 0; fila < 8; fila++) {
+            for (int columna = 0; columna < 8; columna++) {
+                Casilla casilla = tablero.getCasilla(new Posicion(fila, columna));
+                if (casilla == null || !casilla.isOcupada()) {
+                    firma.append('.');
+                    continue;
+                }
+
+                Pieza pieza = casilla.getPieza();
+                firma.append(pieza.getColor() == COLOR.BLANCA ? 'B' : 'N');
+                firma.append(pieza.isReina() ? 'R' : 'P');
+            }
+        }
+
+        return firma.toString();
+    }
+
+    //Metodo para obtener el puntaje
+    @Override
+    public int getPuntaje(COLOR color) {
+        int capturas = color == COLOR.BLANCA ? capturasBlancas : capturasNegras;
+        int coronaciones = color == COLOR.BLANCA ? coronacionesBlancas : coronacionesNegras;
+        return capturas * 10 + coronaciones * 15;
+    }
+
+    //Metodo para calcular el puntaje final
+    @Override
+    public int calcularPuntajeFinal(COLOR color) {
+        return getPuntaje(color) + 50;
+    }
+
+    //Metodo para obtener el nombre del color
+    @Override
+    public String getNombreColor(COLOR color) {
+        return nombreColor(color);
     }
 
     //Metodo para colocar una fila de piezas

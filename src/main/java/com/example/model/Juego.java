@@ -1,9 +1,7 @@
 package com.example.model;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import com.example.observer.Observador;
 import com.example.observer.Sujeto;
@@ -21,12 +19,6 @@ public class Juego implements Sujeto {
     private boolean empate;
     private COLOR ganador;
     private String mensajeFinJuego;
-    private int movimientosSinProgreso;
-    private int capturasBlancas;
-    private int capturasNegras;
-    private int coronacionesBlancas;
-    private int coronacionesNegras;
-    private Map<String, Integer> repeticionesPosicion;
     private List<Observador> observadores;
 
     //Constructor para crear un juego con una estrategia
@@ -34,12 +26,10 @@ public class Juego implements Sujeto {
         this.estrategia = estrategia;
         this.tablero = new Tablero();
         this.estado = new TurnoBlancas();
-        this.repeticionesPosicion = new HashMap<>();
         this.observadores = new ArrayList<>();
 
         reiniciarDatos();
-        estrategia.inicializarTablero(tablero);
-        registrarPosicionActual();
+        estrategia.inicializarTablero(tablero, getTurnoActual());
     }
 
     //Metodo para procesar un movimiento
@@ -67,13 +57,11 @@ public class Juego implements Sujeto {
             return false;
         }
 
-        actualizarPuntajeYProgreso(resultado, colorMovimiento);
-
         if (resultado.isCambiarTurno()) {
             estado.manejarTurno(this);
         }
 
-        registrarPosicionActual();
+        estrategia.registrarMovimiento(tablero, getTurnoActual(), colorMovimiento, resultado);
         estado.esJuegoTerminado(this);
         notificarObservadores();
         return true;
@@ -94,74 +82,6 @@ public class Juego implements Sujeto {
         return estrategia.obtenerDestinosLegales(pieza, origen, tablero, getTurnoActual());
     }
 
-    //Metodo para actualizar el puntaje y el progreso
-    private void actualizarPuntajeYProgreso(ResultadoMovimiento resultado, COLOR color) {
-        if (resultado.isCaptura()) {
-            registrarCaptura(color);
-        }
-
-        if (resultado.isCoronacion()) {
-            registrarCoronacion(color);
-        }
-
-        if (resultado.isCaptura() || resultado.isCoronacion()) {
-            movimientosSinProgreso = 0;
-        } else {
-            movimientosSinProgreso++;
-        }
-    }
-
-    //Metodo para registrar una captura
-    private void registrarCaptura(COLOR color) {
-        if (color == COLOR.BLANCA) {
-            capturasBlancas++;
-        } else {
-            capturasNegras++;
-        }
-    }
-
-    //Metodo para registrar una coronacion
-    private void registrarCoronacion(COLOR color) {
-        if (color == COLOR.BLANCA) {
-            coronacionesBlancas++;
-        } else {
-            coronacionesNegras++;
-        }
-    }
-
-    //Metodo para registrar la posicion actual
-    public void registrarPosicionActual() {
-        String firma = crearFirmaPosicion();
-        repeticionesPosicion.put(firma, repeticionesPosicion.getOrDefault(firma, 0) + 1);
-    }
-
-    //Metodo para saber si hay repeticion de posicion
-    public boolean hayRepeticionDePosicion() {
-        return repeticionesPosicion.getOrDefault(crearFirmaPosicion(), 0) >= 3;
-    }
-
-    //Metodo para crear la firma de la posicion
-    private String crearFirmaPosicion() {
-        StringBuilder firma = new StringBuilder();
-        firma.append(getTurnoActual()).append('|');
-
-        for (int fila = 0; fila < 8; fila++) {
-            for (int columna = 0; columna < 8; columna++) {
-                Casilla casilla = tablero.getCasilla(new Posicion(fila, columna));
-                if (casilla == null || !casilla.isOcupada()) {
-                    firma.append('.');
-                    continue;
-                }
-
-                Pieza pieza = casilla.getPieza();
-                firma.append(pieza.getColor() == COLOR.BLANCA ? 'B' : 'N');
-                firma.append(pieza.isReina() ? 'R' : 'P');
-            }
-        }
-
-        return firma.toString();
-    }
-
     //Metodo para terminar el juego con ganador
     public void terminarConGanador(COLOR ganador, String razon) {
         if (juegoTerminado) {
@@ -171,7 +91,7 @@ public class Juego implements Sujeto {
         this.juegoTerminado = true;
         this.empate = false;
         this.ganador = ganador;
-        this.mensajeFinJuego = "Gana " + nombreColor(ganador) + ". " + razon
+        this.mensajeFinJuego = "Gana " + estrategia.getNombreColor(ganador) + ". " + razon
                 + "\nPuntaje final: " + calcularPuntajeFinal(ganador);
     }
 
@@ -185,11 +105,6 @@ public class Juego implements Sujeto {
         this.empate = true;
         this.ganador = null;
         this.mensajeFinJuego = razon;
-    }
-
-    //Metodo para obtener el nombre del color
-    private String nombreColor(COLOR color) {
-        return color == COLOR.BLANCA ? "blancas" : "negras";
     }
 
     //Metodo para cambiar el estado del juego
@@ -206,8 +121,7 @@ public class Juego implements Sujeto {
     public void iniciarNuevoJuego() {
         this.estado = new TurnoBlancas();
         reiniciarDatos();
-        estrategia.inicializarTablero(tablero);
-        registrarPosicionActual();
+        estrategia.inicializarTablero(tablero, getTurnoActual());
         notificarObservadores();
     }
 
@@ -217,12 +131,6 @@ public class Juego implements Sujeto {
         this.empate = false;
         this.ganador = null;
         this.mensajeFinJuego = "";
-        this.movimientosSinProgreso = 0;
-        this.capturasBlancas = 0;
-        this.capturasNegras = 0;
-        this.coronacionesBlancas = 0;
-        this.coronacionesNegras = 0;
-        this.repeticionesPosicion.clear();
     }
 
     //Metodo para agregar un observador
@@ -277,20 +185,13 @@ public class Juego implements Sujeto {
         return mensajeFinJuego;
     }
 
-    //Metodo para obtener los movimientos sin progreso
-    public int getMovimientosSinProgreso() {
-        return movimientosSinProgreso;
-    }
-
     //Metodo para obtener el puntaje
     public int getPuntaje(COLOR color) {
-        int capturas = color == COLOR.BLANCA ? capturasBlancas : capturasNegras;
-        int coronaciones = color == COLOR.BLANCA ? coronacionesBlancas : coronacionesNegras;
-        return capturas * 10 + coronaciones * 15;
+        return estrategia.getPuntaje(color);
     }
 
     //Metodo para calcular el puntaje final
     public int calcularPuntajeFinal(COLOR color) {
-        return getPuntaje(color) + 50;
+        return estrategia.calcularPuntajeFinal(color);
     }
 }

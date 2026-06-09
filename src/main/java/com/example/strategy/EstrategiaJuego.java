@@ -37,6 +37,14 @@ public interface EstrategiaJuego {
             COLOR turnoActual
     );
 
+    //Metodo para registrar los datos despues de un movimiento
+    void registrarMovimiento(
+            Tablero tablero,
+            COLOR turnoActual,
+            COLOR colorMovimiento,
+            ResultadoMovimiento resultado
+    );
+
     //Metodo para obtener los movimientos legales
     List<Movimiento> obtenerMovimientosLegales(
             Pieza pieza,
@@ -62,5 +70,14 @@ public interface EstrategiaJuego {
     void evaluarFinDelJuego(Juego juego);
 
     //Metodo para inicializar el tablero
-    void inicializarTablero(Tablero tablero);
+    void inicializarTablero(Tablero tablero, COLOR turnoInicial);
+
+    //Metodo para obtener el puntaje
+    int getPuntaje(COLOR color);
+
+    //Metodo para calcular el puntaje final
+    int calcularPuntajeFinal(COLOR color);
+
+    //Metodo para obtener el nombre del color
+    String getNombreColor(COLOR color);
 }
