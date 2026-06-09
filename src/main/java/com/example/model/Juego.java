@@ -11,12 +11,12 @@ import com.example.state.EstadoJuego;
 import com.example.state.TurnoBlancas;
 import com.example.strategy.EstrategiaJuego;
 
+//Clase para coordinar el juego
 public class Juego implements Sujeto {
 
     private EstadoJuego estado;
     private EstrategiaJuego estrategia;
     private Tablero tablero;
-    private COLOR turnoActual;
     private boolean juegoTerminado;
     private boolean empate;
     private COLOR ganador;
@@ -27,155 +27,91 @@ public class Juego implements Sujeto {
     private int coronacionesBlancas;
     private int coronacionesNegras;
     private Map<String, Integer> repeticionesPosicion;
-
     private List<Observador> observadores;
 
+    //Constructor para crear un juego con una estrategia
     public Juego(EstrategiaJuego estrategia) {
         this.estrategia = estrategia;
         this.tablero = new Tablero();
         this.estado = new TurnoBlancas();
-        this.turnoActual = COLOR.BLANCA;
-        this.juegoTerminado = false;
-        this.empate = false;
-        this.ganador = null;
-        this.mensajeFinJuego = "";
-        this.movimientosSinProgreso = 0;
-        this.capturasBlancas = 0;
-        this.capturasNegras = 0;
-        this.coronacionesBlancas = 0;
-        this.coronacionesNegras = 0;
         this.repeticionesPosicion = new HashMap<>();
         this.observadores = new ArrayList<>();
 
+        reiniciarDatos();
         estrategia.inicializarTablero(tablero);
         registrarPosicionActual();
     }
 
+    //Metodo para procesar un movimiento
     public void procesarMovimiento(Movimiento movimiento) {
         intentarProcesarMovimiento(movimiento);
     }
 
+    //Metodo para intentar realizar un movimiento
     public boolean intentarProcesarMovimiento(Movimiento movimiento) {
-        if (juegoTerminado) return false;
-
-        Casilla origen = tablero.getCasilla(movimiento.getOrigen());
-        if (origen == null || origen.getPieza() == null) return false;
-
-        Pieza pieza = origen.getPieza();
+        if (estado.esJuegoTerminado(this)) {
+            notificarObservadores();
+            return false;
+        }
 
         if (!estado.esMovimientoValido(this, movimiento)) {
             System.out.println("No es el turno de esa pieza.");
             return false;
         }
 
-        Movimiento movimientoCompleto = estrategia.crearMovimiento(
-                pieza,
-                movimiento.getOrigen(),
-                movimiento.getDestino(),
-                tablero
-        );
+        COLOR colorMovimiento = getTurnoActual();
+        ResultadoMovimiento resultado = estrategia.ejecutarMovimiento(movimiento, tablero, colorMovimiento);
 
-        if (movimientoCompleto == null) {
-            System.out.println("Movimiento invalido.");
+        if (!resultado.isRealizado()) {
+            System.out.println(resultado.getMensaje());
             return false;
         }
 
-        if (hayCapturasDisponibles(turnoActual) && !movimientoCompleto.esCaptura()) {
-            System.out.println("Hay una captura obligatoria.");
-            return false;
-        }
+        actualizarPuntajeYProgreso(resultado, colorMovimiento);
 
-        boolean huboCaptura = aplicarCapturas(movimientoCompleto, pieza);
-        tablero.moverPieza(movimientoCompleto.getOrigen(), movimientoCompleto.getDestino());
-        boolean huboCoronacion = coronarSiCorresponde(pieza, movimientoCompleto.getDestino());
-
-        if (!huboCaptura) {
+        if (resultado.isCambiarTurno()) {
             estado.manejarTurno(this);
-            cambiarTurno();
         }
 
-        actualizarContadorProgreso(huboCaptura, huboCoronacion);
-        evaluarFinDelJuego();
-
+        registrarPosicionActual();
+        estado.esJuegoTerminado(this);
         notificarObservadores();
         return true;
     }
 
+    //Metodo para obtener los destinos legales de una pieza
     public List<Posicion> obtenerDestinosLegales(Posicion origen) {
-        List<Posicion> destinos = new ArrayList<>();
-
-        if (juegoTerminado) {
-            return destinos;
-        }
-
         Casilla casillaOrigen = tablero.getCasilla(origen);
         if (casillaOrigen == null || !casillaOrigen.isOcupada()) {
-            return destinos;
+            return new ArrayList<>();
         }
 
         Pieza pieza = casillaOrigen.getPieza();
-        if (pieza.getColor() != turnoActual) {
-            return destinos;
+        if (pieza.getColor() != getTurnoActual()) {
+            return new ArrayList<>();
         }
 
-        boolean debeCapturar = hayCapturasDisponibles(turnoActual);
-
-        for (Movimiento movimiento : estrategia.obtenerMovimientosLegales(pieza, origen, tablero)) {
-            if (!debeCapturar || movimiento.esCaptura()) {
-                destinos.add(movimiento.getDestino());
-            }
-        }
-
-        return destinos;
+        return estrategia.obtenerDestinosLegales(pieza, origen, tablero, getTurnoActual());
     }
 
-    private boolean aplicarCapturas(Movimiento movimiento, Pieza pieza) {
-        if (!movimiento.esCaptura()) {
-            return false;
+    //Metodo para actualizar el puntaje y el progreso
+    private void actualizarPuntajeYProgreso(ResultadoMovimiento resultado, COLOR color) {
+        if (resultado.isCaptura()) {
+            registrarCaptura(color);
         }
 
-        for (Posicion captura : movimiento.getCapturas()) {
-            tablero.eliminarPieza(captura);
-            registrarCaptura(pieza.getColor());
+        if (resultado.isCoronacion()) {
+            registrarCoronacion(color);
         }
 
-        return true;
+        if (resultado.isCaptura() || resultado.isCoronacion()) {
+            movimientosSinProgreso = 0;
+        } else {
+            movimientosSinProgreso++;
+        }
     }
 
-    private boolean hayCapturasDisponibles(COLOR color) {
-        for (Casilla casilla : tablero.getCasillas()) {
-            if (!casilla.isOcupada() || casilla.getPieza().getColor() != color) {
-                continue;
-            }
-
-            Pieza pieza = casilla.getPieza();
-            Posicion origen = casilla.getPosicion();
-
-            for (Movimiento movimiento : estrategia.obtenerMovimientosLegales(pieza, origen, tablero)) {
-                if (movimiento.esCaptura()) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private boolean coronarSiCorresponde(Pieza pieza, Posicion destino) {
-        if (pieza.isReina()) {
-            return false;
-        }
-
-        if ((pieza.getColor() == COLOR.BLANCA && destino.getFila() == 0)
-                || (pieza.getColor() == COLOR.NEGRA && destino.getFila() == 7)) {
-            pieza.coronar();
-            registrarCoronacion(pieza.getColor());
-            return true;
-        }
-
-        return false;
-    }
-
+    //Metodo para registrar una captura
     private void registrarCaptura(COLOR color) {
         if (color == COLOR.BLANCA) {
             capturasBlancas++;
@@ -184,6 +120,7 @@ public class Juego implements Sujeto {
         }
     }
 
+    //Metodo para registrar una coronacion
     private void registrarCoronacion(COLOR color) {
         if (color == COLOR.BLANCA) {
             coronacionesBlancas++;
@@ -192,85 +129,21 @@ public class Juego implements Sujeto {
         }
     }
 
-    private void actualizarContadorProgreso(boolean huboCaptura, boolean huboCoronacion) {
-        if (huboCaptura || huboCoronacion) {
-            movimientosSinProgreso = 0;
-        } else {
-            movimientosSinProgreso++;
-        }
-    }
-
-    private void evaluarFinDelJuego() {
-        int blancas = contarPiezas(COLOR.BLANCA);
-        int negras = contarPiezas(COLOR.NEGRA);
-
-        if (blancas == 0) {
-            terminarConGanador(COLOR.NEGRA, "Las blancas se quedaron sin piezas.");
-            return;
-        }
-
-        if (negras == 0) {
-            terminarConGanador(COLOR.BLANCA, "Las negras se quedaron sin piezas.");
-            return;
-        }
-
-        if (!hayMovimientosDisponibles(turnoActual)) {
-            terminarConGanador(colorContrario(turnoActual),
-                    nombreColor(turnoActual) + " no puede realizar movimientos.");
-            return;
-        }
-
-        registrarPosicionActual();
-
-        if (hayRepeticionDePosicion()) {
-            terminarEnEmpate("Empate por repeticion de posicion.");
-            return;
-        }
-
-        if (movimientosSinProgreso >= 50) {
-            terminarEnEmpate("Empate por 50 movimientos sin capturas ni coronacion.");
-        }
-    }
-
-    private int contarPiezas(COLOR color) {
-        int total = 0;
-        for (Casilla casilla : tablero.getCasillas()) {
-            if (casilla.isOcupada() && casilla.getPieza().getColor() == color) {
-                total++;
-            }
-        }
-        return total;
-    }
-
-    private boolean hayMovimientosDisponibles(COLOR color) {
-        for (Casilla casilla : tablero.getCasillas()) {
-            if (!casilla.isOcupada() || casilla.getPieza().getColor() != color) {
-                continue;
-            }
-
-            Pieza pieza = casilla.getPieza();
-            Posicion origen = casilla.getPosicion();
-
-            if (!estrategia.obtenerMovimientosLegales(pieza, origen, tablero).isEmpty()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void registrarPosicionActual() {
+    //Metodo para registrar la posicion actual
+    public void registrarPosicionActual() {
         String firma = crearFirmaPosicion();
         repeticionesPosicion.put(firma, repeticionesPosicion.getOrDefault(firma, 0) + 1);
     }
 
-    private boolean hayRepeticionDePosicion() {
+    //Metodo para saber si hay repeticion de posicion
+    public boolean hayRepeticionDePosicion() {
         return repeticionesPosicion.getOrDefault(crearFirmaPosicion(), 0) >= 3;
     }
 
+    //Metodo para crear la firma de la posicion
     private String crearFirmaPosicion() {
         StringBuilder firma = new StringBuilder();
-        firma.append(turnoActual).append('|');
+        firma.append(getTurnoActual()).append('|');
 
         for (int fila = 0; fila < 8; fila++) {
             for (int columna = 0; columna < 8; columna++) {
@@ -289,7 +162,12 @@ public class Juego implements Sujeto {
         return firma.toString();
     }
 
-    private void terminarConGanador(COLOR ganador, String razon) {
+    //Metodo para terminar el juego con ganador
+    public void terminarConGanador(COLOR ganador, String razon) {
+        if (juegoTerminado) {
+            return;
+        }
+
         this.juegoTerminado = true;
         this.empate = false;
         this.ganador = ganador;
@@ -297,38 +175,44 @@ public class Juego implements Sujeto {
                 + "\nPuntaje final: " + calcularPuntajeFinal(ganador);
     }
 
-    private void terminarEnEmpate(String razon) {
+    //Metodo para terminar el juego en empate
+    public void terminarEnEmpate(String razon) {
+        if (juegoTerminado) {
+            return;
+        }
+
         this.juegoTerminado = true;
         this.empate = true;
         this.ganador = null;
         this.mensajeFinJuego = razon;
     }
 
-    private COLOR colorContrario(COLOR color) {
-        return color == COLOR.BLANCA ? COLOR.NEGRA : COLOR.BLANCA;
-    }
-
+    //Metodo para obtener el nombre del color
     private String nombreColor(COLOR color) {
         return color == COLOR.BLANCA ? "blancas" : "negras";
     }
 
-    public void cambiarTurno() {
-        turnoActual = (turnoActual == COLOR.BLANCA)
-                ? COLOR.NEGRA
-                : COLOR.BLANCA;
-    }
-
+    //Metodo para cambiar el estado del juego
     public void cambiarEstado(EstadoJuego nuevoEstado) {
         this.estado = nuevoEstado;
     }
 
+    //Metodo para saber si el juego termino
     public boolean esFinDelJuego() {
         return juegoTerminado;
     }
 
+    //Metodo para iniciar un nuevo juego
     public void iniciarNuevoJuego() {
         this.estado = new TurnoBlancas();
-        this.turnoActual = COLOR.BLANCA;
+        reiniciarDatos();
+        estrategia.inicializarTablero(tablero);
+        registrarPosicionActual();
+        notificarObservadores();
+    }
+
+    //Metodo para reiniciar los datos del juego
+    private void reiniciarDatos() {
         this.juegoTerminado = false;
         this.empate = false;
         this.ganador = null;
@@ -339,54 +223,73 @@ public class Juego implements Sujeto {
         this.coronacionesBlancas = 0;
         this.coronacionesNegras = 0;
         this.repeticionesPosicion.clear();
-        estrategia.inicializarTablero(tablero);
-        registrarPosicionActual();
-        notificarObservadores();
     }
 
+    //Metodo para agregar un observador
     @Override
-    public void agregarObservador(Observador o) {
-        observadores.add(o);
-    }
-
-    @Override
-    public void eliminarObservador(Observador o) {
-        observadores.remove(o);
-    }
-
-    @Override
-    public void notificarObservadores() {
-        for (Observador o : observadores) {
-            o.actualizar();
+    public void agregarObservador(Observador observador) {
+        if (observador != null && !observadores.contains(observador)) {
+            observadores.add(observador);
         }
     }
 
+    //Metodo para eliminar un observador
+    @Override
+    public void eliminarObservador(Observador observador) {
+        observadores.remove(observador);
+    }
+
+    //Metodo para notificar a los observadores
+    @Override
+    public void notificarObservadores() {
+        for (Observador observador : new ArrayList<>(observadores)) {
+            observador.actualizar(this);
+        }
+    }
+
+    //Metodo para obtener la estrategia
+    public EstrategiaJuego getEstrategia() {
+        return estrategia;
+    }
+
+    //Metodo para obtener el tablero
     public Tablero getTablero() {
         return tablero;
     }
 
+    //Metodo para obtener el turno actual
     public COLOR getTurnoActual() {
-        return turnoActual;
+        return estado.getColorTurno();
     }
 
+    //Metodo para saber si hubo empate
     public boolean isEmpate() {
         return empate;
     }
 
+    //Metodo para obtener el ganador
     public COLOR getGanador() {
         return ganador;
     }
 
+    //Metodo para obtener el mensaje final
     public String getMensajeFinJuego() {
         return mensajeFinJuego;
     }
 
+    //Metodo para obtener los movimientos sin progreso
+    public int getMovimientosSinProgreso() {
+        return movimientosSinProgreso;
+    }
+
+    //Metodo para obtener el puntaje
     public int getPuntaje(COLOR color) {
         int capturas = color == COLOR.BLANCA ? capturasBlancas : capturasNegras;
         int coronaciones = color == COLOR.BLANCA ? coronacionesBlancas : coronacionesNegras;
         return capturas * 10 + coronaciones * 15;
     }
 
+    //Metodo para calcular el puntaje final
     public int calcularPuntajeFinal(COLOR color) {
         return getPuntaje(color) + 50;
     }

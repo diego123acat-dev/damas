@@ -5,11 +5,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+//Clase para manejar la ruta de almacenamiento
 public class ConexionDB {
 
     private static final String CARPETA_DATOS = ".damas-turcas";
     private static final String ARCHIVO_SCORES = "scores.dat";
 
+    //Método para obtener la ruta del archivo de scores
     public Path obtenerRutaScores() {
         Path carpeta = Paths.get(System.getProperty("user.home"), CARPETA_DATOS);
 

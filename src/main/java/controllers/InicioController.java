@@ -16,6 +16,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.Font;
 
+//Clase para controlar la pantalla de inicio
 public class InicioController {
 
     @FXML
@@ -23,21 +24,25 @@ public class InicioController {
 
     private final DAO<Score> scoreDAO = new ScoreDAO();
 
+    //Método para inicializar la pantalla de inicio
     @FXML
     private void initialize() {
         cargarScores();
     }
 
+    //Método para iniciar una partida
     @FXML
     private void iniciarPartida() throws IOException {
         App.setRoot("tableroC");
     }
 
+    //Método para salir de la aplicacion
     @FXML
     private void salir() {
         Platform.exit();
     }
 
+    //Método para cargar los mejores scores
     private void cargarScores() {
         scoresContainer.getChildren().clear();
         List<Score> scores = scoreDAO.obtenerTodos();
@@ -57,6 +62,7 @@ public class InicioController {
         }
     }
 
+    //Método para crear una fila de score
     private HBox crearFilaScore(String jugador, String puntos) {
         HBox fila = new HBox();
         fila.setAlignment(Pos.CENTER_LEFT);
@@ -73,6 +79,7 @@ public class InicioController {
         return fila;
     }
 
+    //Método para crear un label de score
     private Label crearLabelScore(String texto) {
         Label label = new Label(texto);
         label.setTextFill(javafx.scene.paint.Color.web("#7A4E28"));

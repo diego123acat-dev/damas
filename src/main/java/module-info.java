@@ -1,3 +1,4 @@
+//Modulo principal de la aplicacion
 module com.example {
     requires javafx.controls;
     requires javafx.fxml;

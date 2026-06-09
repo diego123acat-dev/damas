@@ -14,10 +14,11 @@ import com.example.model.Juego;
 import com.example.model.Movimiento;
 import com.example.model.Pieza;
 import com.example.model.Posicion;
+import com.example.observer.Observador;
 import com.example.strategy.DamasTurcas;
 
-import javafx.application.Platform;
 import javafx.animation.PauseTransition;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Alert;
@@ -34,7 +35,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
 
-public class tableroCController {
+//Clase para controlar el tablero del juego
+public class tableroCController implements Observador {
 
     private static final String COLOR_CLARO = "#F4E7D3";
     private static final String COLOR_OSCURO = "#B97A3D";
@@ -58,13 +60,17 @@ public class tableroCController {
     private List<Posicion> destinosLegales;
     private Image imagenBlanca;
     private Image imagenNegra;
+    private boolean finMostrado;
 
+    //Metodo para inicializar el tablero
     @FXML
     private void initialize() {
         juego = new Juego(new DamasTurcas());
+        juego.agregarObservador(this);
         scoreDAO = new ScoreDAO();
         casillas = new Pane[8][8];
         destinosLegales = new ArrayList<>();
+        finMostrado = false;
         imagenBlanca = cargarImagen("/com/Images/ficha clara.jpg");
         imagenNegra = cargarImagen("/com/Images/ficha oscura.jpg");
 
@@ -72,15 +78,28 @@ public class tableroCController {
         pintarTablero();
     }
 
+    //Metodo para reiniciar el juego
     @FXML
     private void reiniciarJuego() {
         seleccionada = null;
         posicionInvalida = null;
+        finMostrado = false;
         destinosLegales.clear();
         juego.iniciarNuevoJuego();
-        pintarTablero();
     }
 
+    //Metodo para actualizar la vista cuando cambia el juego
+    @Override
+    public void actualizar(Juego juego) {
+        pintarTablero();
+
+        if (juego.esFinDelJuego() && !finMostrado) {
+            finMostrado = true;
+            mostrarFinDelJuego();
+        }
+    }
+
+    //Metodo para preparar las casillas del tablero
     private void prepararCasillas() {
         for (Node node : tableroGrid.getChildren()) {
             if (node instanceof Pane) {
@@ -95,10 +114,12 @@ public class tableroCController {
         }
     }
 
+    //Metodo para obtener el indice de una casilla
     private int obtenerIndice(Integer indice) {
         return indice == null ? 0 : indice;
     }
 
+    //Metodo para manejar el click en una casilla
     private void manejarClick(Posicion posicion) {
         Casilla casilla = juego.getTablero().getCasilla(posicion);
 
@@ -127,22 +148,21 @@ public class tableroCController {
             return;
         }
 
-        Movimiento movimiento = new Movimiento(seleccionada, posicion);
+        Posicion origenSeleccionado = seleccionada;
+        Movimiento movimiento = new Movimiento(origenSeleccionado, posicion);
+        seleccionada = null;
+        destinosLegales.clear();
+
         boolean movimientoRealizado = juego.intentarProcesarMovimiento(movimiento);
 
-        if (movimientoRealizado) {
-            seleccionada = null;
-            destinosLegales.clear();
-            pintarTablero();
-
-            if (juego.esFinDelJuego()) {
-                mostrarFinDelJuego();
-            }
-        } else {
+        if (!movimientoRealizado) {
+            seleccionada = origenSeleccionado;
+            destinosLegales = juego.obtenerDestinosLegales(origenSeleccionado);
             marcarMovimientoInvalido(posicion);
         }
     }
 
+    //Metodo para marcar un movimiento invalido
     private void marcarMovimientoInvalido(Posicion posicion) {
         posicionInvalida = posicion;
         pintarTablero();
@@ -155,6 +175,7 @@ public class tableroCController {
         pausa.play();
     }
 
+    //Metodo para mostrar el fin del juego
     private void mostrarFinDelJuego() {
         guardarScoreSiHayGanador();
 
@@ -175,6 +196,7 @@ public class tableroCController {
         }
     }
 
+    //Metodo para guardar el score si hay ganador
     private void guardarScoreSiHayGanador() {
         if (juego.isEmpate() || juego.getGanador() == null) {
             return;
@@ -195,6 +217,7 @@ public class tableroCController {
         scoreDAO.guardar(new Score(jugador, juego.calcularPuntajeFinal(juego.getGanador())));
     }
 
+    //Metodo para pintar el tablero
     private void pintarTablero() {
         for (int fila = 0; fila < 8; fila++) {
             for (int columna = 0; columna < 8; columna++) {
@@ -220,6 +243,7 @@ public class tableroCController {
         J2Score.setText(String.valueOf(juego.getPuntaje(COLOR.BLANCA)));
     }
 
+    //Metodo para obtener el estilo de una casilla
     private String estiloCasilla(int fila, int columna) {
         boolean estaInvalida = posicionInvalida != null
                 && posicionInvalida.getFila() == fila
@@ -240,6 +264,7 @@ public class tableroCController {
         return "-fx-background-color: " + color + ";";
     }
 
+    //Metodo para crear el indicador de destino
     private Node crearIndicadorDestino() {
         StackPane contenedor = new StackPane();
         contenedor.setPrefSize(70, 70);
@@ -253,6 +278,7 @@ public class tableroCController {
         return contenedor;
     }
 
+    //Metodo para crear la vista de una pieza
     private Node crearVistaPieza(Pieza pieza) {
         Image imagen = pieza.getColor() == COLOR.BLANCA ? imagenBlanca : imagenNegra;
         StackPane contenedor = new StackPane();
@@ -282,15 +308,18 @@ public class tableroCController {
         return contenedor;
     }
 
+    //Metodo para cargar una imagen
     private Image cargarImagen(String ruta) {
         URL url = getClass().getResource(ruta);
         return url == null ? null : new Image(url.toExternalForm());
     }
 
+    //Metodo para comparar dos posiciones
     private boolean mismaPosicion(Posicion a, Posicion b) {
         return a.getFila() == b.getFila() && a.getColumna() == b.getColumna();
     }
 
+    //Metodo para saber si una posicion es destino legal
     private boolean esDestinoLegal(Posicion posicion) {
         for (Posicion destino : destinosLegales) {
             if (mismaPosicion(destino, posicion)) {

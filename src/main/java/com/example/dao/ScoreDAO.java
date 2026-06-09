@@ -10,16 +10,19 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+//Clase para manejar los scores guardados
 public class ScoreDAO implements DAO<Score> {
 
     private static final int LIMITE_SCORES = 10;
 
     private final ConexionDB conexion;
 
+    //Constructor para crear la conexion de scores
     public ScoreDAO() {
         this.conexion = new ConexionDB();
     }
 
+    //Método para guardar un score
     @Override
     public void guardar(Score score) {
         List<Score> scores = obtenerTodos();
@@ -33,6 +36,7 @@ public class ScoreDAO implements DAO<Score> {
         escribirScores(scores);
     }
 
+    //Método para obtener todos los scores
     @Override
     public List<Score> obtenerTodos() {
         Path ruta = conexion.obtenerRutaScores();
@@ -64,6 +68,7 @@ public class ScoreDAO implements DAO<Score> {
         return new ArrayList<>();
     }
 
+    //Método para eliminar un score
     @Override
     public void eliminar(Score score) {
         List<Score> scores = obtenerTodos();
@@ -71,19 +76,23 @@ public class ScoreDAO implements DAO<Score> {
         escribirScores(scores);
     }
 
+    //Método para eliminar todos los scores
     @Override
     public void eliminarTodos() {
         escribirScores(new ArrayList<>());
     }
 
+    //Método para guardar un score desde otro nombre
     public void guardarScore(Score score) {
         guardar(score);
     }
 
+    //Método para obtener los scores desde otro nombre
     public List<Score> obtenerScores() {
         return obtenerTodos();
     }
 
+    //Método para escribir los scores en el archivo
     private void escribirScores(List<Score> scores) {
         Path ruta = conexion.obtenerRutaScores();
 
